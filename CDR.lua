@@ -321,11 +321,11 @@ local function farmLoop()
 		end
 		task.wait(0.5)
 		if not farming then break end
-		-- 5 : Récupérer l'argent + attente 4s
+		-- 5 : Récupérer l'argent + attente 3s
 		setStatus("💵 Récupérer argent...", Color3.fromRGB(100, 255, 100))
 		setStep("[5/7] Prompt Zapravka2")
 		firePromptRetry(zapravka2, 8)
-		for i = 4, 1, -1 do
+		for i = 3, 1, -1 do
 			if not farming then break end
 			setStatus("⏳ Chargement... " .. i .. "s", Color3.fromRGB(255, 255, 100))
 			setStep("[5/7] Récupération argent")
@@ -359,17 +359,12 @@ local function farmLoop()
 	setStep("")
 end
 -- ═══ RADAR ANTI-DÉTECTION ═══
--- Placé APRÈS farmLoop pour éviter toute référence nil
 local RADAR_RADIUS = 80
-local isHiding = false
-local carSavedCFrame = nil
-local radarActive = false
+local isPlayerNear = false
+local radarBusy = false
 
 RunService.Heartbeat:Connect(function()
-	-- Le radar ne tourne que si le farming est actif OU si la voiture est cachée
-	if not farming and not isHiding then return end
-	-- Ne pas lancer plusieurs checks en parallèle
-	if radarActive then return end
+	if radarBusy then return end
 
 	local car = getCar()
 	if not car then return end
@@ -394,38 +389,34 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	-- Joueur détecté → cacher la voiture + stop farm
-	if playerDetected and not isHiding then
-		isHiding = true
-		farming = false
-		carSavedCFrame = seat.CFrame
-		radarActive = true
-		task.spawn(function()
-			setStatus("🚨 Joueur détecté ! Cache...", Color3.fromRGB(255, 80, 0))
-			setStep("⏸ Autofarm suspendu")
-			ToggleBtn.Text = "▶ START"
-			ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 170, 35)
-			teleportCar(CFrame.new(carSavedCFrame.Position.X, -40, carSavedCFrame.Position.Z))
-			radarActive = false
-		end)
+	-- Joueur détecté → stop farm uniquement
+	if playerDetected and not isPlayerNear then
+		isPlayerNear = true
+		if farming then
+			farming = false
+			radarBusy = true
+			task.spawn(function()
+				setStatus("🚨 Joueur détecté ! Stop.", Color3.fromRGB(255, 80, 0))
+				setStep("⏸ Autofarm suspendu")
+				ToggleBtn.Text = "▶ START"
+				ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 170, 35)
+				radarBusy = false
+			end)
+		end
 
-	-- Plus de joueur → ramener la voiture + reprendre farm
-	elseif not playerDetected and isHiding then
-		isHiding = false
-		radarActive = true
+	-- Plus de joueur → reprendre farm
+	elseif not playerDetected and isPlayerNear then
+		isPlayerNear = false
+		radarBusy = true
 		task.spawn(function()
 			setStatus("✅ Zone libre ! Reprise...", Color3.fromRGB(0, 220, 100))
 			setStep("▶ Reprise autofarm...")
-			if carSavedCFrame then
-				teleportCar(carSavedCFrame)
-				carSavedCFrame = nil
-			end
 			task.wait(0.5)
 			farming = true
 			ToggleBtn.Text = "⏹ STOP"
 			ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 			task.spawn(farmLoop)
-			radarActive = false
+			radarBusy = false
 		end)
 	end
 end)
