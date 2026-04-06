@@ -321,11 +321,11 @@ local function farmLoop()
 		end
 		task.wait(0.5)
 		if not farming then break end
-		-- 5 : Récupérer l'argent + attente 3s
+		-- 5 : Récupérer l'argent + attente 4s
 		setStatus("💵 Récupérer argent...", Color3.fromRGB(100, 255, 100))
 		setStep("[5/7] Prompt Zapravka2")
 		firePromptRetry(zapravka2, 8)
-		for i = 3, 1, -1 do
+		for i = 4, 1, -1 do
 			if not farming then break end
 			setStatus("⏳ Chargement... " .. i .. "s", Color3.fromRGB(255, 255, 100))
 			setStep("[5/7] Récupération argent")
